@@ -24,5 +24,6 @@ func (s *Server) Request(ctx context.Context, payload int) bool {
 		return true
 	}
 
+	time.Sleep(5*time.Millisecond)
 	return false
 }

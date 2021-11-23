@@ -25,7 +25,7 @@ func do() error {
 			clients[i] = &client.NoWait{}
 			break
 		case "const":
-			clients[i] = &client.ConstWait{WaitTime: time.Millisecond}
+			clients[i] = &client.ConstWait{WaitTime: 10*time.Millisecond}
 			break
 		}
 	}
@@ -41,26 +41,24 @@ func do() error {
 		return err
 	}
 
-	//if totalRequestCount != s.SuccessCount {
-	//	return fmt.Errorf(
-	//		"total requst count expected to be %d, but got %d",
-	//		totalRequestCount,
-	//		s.SuccessCount)
-	//}
-
-	totalAttempts := 0
-	for _, c := range clients {
-		totalAttempts += c.GetLog().TotalAttempts()
+	var (
+		allLog *client.Log
+	)
+	{
+		logs := make([]*client.Log, totalRequestCount)
+		for i, c := range clients {
+			logs[i] = c.GetLog()
+		}
+		allLog = client.AggregateLog(logs)
 	}
 
-	println("attempts: ", totalAttempts)
+	delta := allLog.LatestTime().Sub(allLog.OldestTime())
 
-	totalSuccess := 0
-	for _, c := range clients {
-		totalSuccess += c.GetLog().SuccessCount()
-	}
+	println("clientType: ", clientType)
+	println("attempts:   ", allLog.TotalAttempts())
+	println("success:    ", allLog.SuccessCount())
+	println("duration:   ", delta.Milliseconds())
 
-	println("success: ", totalSuccess)
 
 	return nil
 }
