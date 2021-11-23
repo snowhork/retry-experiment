@@ -9,31 +9,50 @@ import (
 	"time"
 )
 
-var clientType = "nowait"
-//var clientType = "const"
+type ClientType string
 
-func do() error {
+const (
+	nowait             ClientType = "nowait"
+	constTime          ClientType = "constTime"
+	linearTimeout      ClientType = "linearTimeout"
+	exponentialBackoff ClientType = "exponentialBackoff"
+)
+
+func do(clientType ClientType) error {
 	ctx := context.Background()
 	s := server.NewServer()
 	eg, ctx := errgroup.WithContext(ctx)
 
-	totalRequestCount := 1000
-	clients := make([]client.Client, totalRequestCount)
-	for i := 0; i < totalRequestCount; i++ {
+	totalWorker := 100
+	requestCountPerWorker := 200
+	workers := make([]client.Worker, totalWorker)
+	for i := 0; i < totalWorker; i++ {
+		var c client.Client
 		switch clientType {
-		case "nowait":
-			clients[i] = &client.NoWait{}
+		case nowait:
+			c = &client.NoWait{}
+		case constTime:
+			c = &client.ConstWait{WaitTime: 1 * time.Millisecond}
 			break
-		case "const":
-			clients[i] = &client.ConstWait{WaitTime: 10*time.Millisecond}
+		case linearTimeout:
+			c = &client.LinearTimeout{WaitTime: 1 * time.Millisecond}
 			break
+		case exponentialBackoff:
+			c = &client.ExponentialBackoff{WaitTime: 1 * time.Millisecond}
+			break
+		}
+
+		workers[i] = client.Worker{
+			Client: c,
+			ID:     i + 1,
+			Need:   requestCountPerWorker,
 		}
 	}
 
-	for i := 0; i < totalRequestCount; i++ {
+	for i := 0; i < totalWorker; i++ {
 		i := i
 		eg.Go(func() error {
-			return clients[i].RequestWithRetry(ctx, s, i)
+			return workers[i].Request(ctx, s)
 		})
 	}
 
@@ -45,26 +64,33 @@ func do() error {
 		allLog *client.Log
 	)
 	{
-		logs := make([]*client.Log, totalRequestCount)
-		for i, c := range clients {
-			logs[i] = c.GetLog()
+		logs := make([]client.Log, totalWorker)
+		for i, w := range workers {
+			logs[i] = w.Log
 		}
 		allLog = client.AggregateLog(logs)
 	}
 
 	delta := allLog.LatestTime().Sub(allLog.OldestTime())
 
+	println("----------")
 	println("clientType: ", clientType)
 	println("attempts:   ", allLog.TotalAttempts())
 	println("success:    ", allLog.SuccessCount())
 	println("duration:   ", delta.Milliseconds())
 
-
 	return nil
 }
 
 func main() {
-	if err := do(); err != nil {
-		log.Fatal(err)
+	for _, clientType := range []ClientType{
+		//nowait,
+		constTime,
+		linearTimeout,
+		exponentialBackoff,
+	} {
+		if err := do(clientType); err != nil {
+			log.Fatal(err)
+		}
 	}
 }

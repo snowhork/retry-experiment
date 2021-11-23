@@ -6,9 +6,13 @@ type Log struct {
 	rows []LogRow
 }
 
+func NewLog() *Log {
+	return &Log{}
+}
+
 type LogRow struct {
-	Time time.Time
-	Payload int
+	Time    time.Time
+	Payload Payload
 	Success bool
 }
 
@@ -28,7 +32,7 @@ func (l *Log) SuccessCount() int {
 }
 
 func (l *Log) OldestTime() time.Time {
-	oldest := time.Date(9999,12,31,9,0,0,0,time.UTC)
+	oldest := time.Date(9999, 12, 31, 9, 0, 0, 0, time.UTC)
 
 	for _, row := range l.rows {
 		if row.Time.Before(oldest) {
@@ -51,7 +55,7 @@ func (l *Log) LatestTime() time.Time {
 	return latest
 }
 
-func AggregateLog(logs []*Log) *Log {
+func AggregateLog(logs []Log) *Log {
 	var rows []LogRow
 	for _, log := range logs {
 		rows = append(rows, log.rows...)

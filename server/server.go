@@ -7,7 +7,7 @@ import (
 )
 
 type Server struct {
-	semaphore    *semaphore.Weighted
+	semaphore *semaphore.Weighted
 }
 
 func NewServer() *Server {
@@ -16,14 +16,20 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) Request(ctx context.Context, payload int) bool {
+func (s *Server) Request(ctx context.Context) bool {
 	if s.semaphore.TryAcquire(1) {
 		defer s.semaphore.Release(1)
-		time.Sleep(10*time.Millisecond)
+
+		//millsec := 10 + rand.Intn(10)
+		millsec := 1
+		time.Sleep(time.Duration(millsec) * time.Millisecond)
 
 		return true
 	}
+	//millsec := 5 + rand.Intn(5)
+	//millsec := 5
+	//time.Sleep(time.Duration(millsec)*time.Millisecond)
 
-	time.Sleep(5*time.Millisecond)
+	//time.Sleep(5*time.Millisecond)
 	return false
 }
