@@ -19,12 +19,12 @@ func (c *ExponentialBackoff) RequestWithRetry(ctx context.Context, s *server.Ser
 		success := s.Request(ctx)
 		callback(success)
 
-		mult *= 2
 		if success {
 			break
 		} else {
 			time.Sleep(time.Duration(mult) * waitTime)
 		}
+		mult *= 2
 	}
 
 	return nil
